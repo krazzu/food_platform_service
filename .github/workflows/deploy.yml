@@ -65,17 +65,20 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: GITHUB_REPOSITORY,GITHUB_ACTOR
           script: |
             set -e
+            export GITHUB_REPOSITORY="${{ github.repository }}"
+            export GITHUB_ACTOR="${{ github.actor }}"
             cd /root/food_platform
 
             # Залогиниться в ghcr.io на сервере
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io \
-              -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+              -u "$GITHUB_ACTOR" --password-stdin
 
             # Подтянуть свежие образы и перезапустить
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" docker compose -f docker-compose.prod.yml pull
+            GITHUB_REPOSITORY="$GITHUB_REPOSITORY" docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
             # Очистить старые образы
             docker image prune -f
