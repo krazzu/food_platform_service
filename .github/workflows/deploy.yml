@@ -67,7 +67,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
-            cd /opt/food-service
+            cd /root/food_platform
 
             # Залогиниться в ghcr.io на сервере
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io \
