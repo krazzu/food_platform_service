@@ -54,8 +54,7 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    environment: []
     depends_on:
       - backend
     restart: unless-stopped
