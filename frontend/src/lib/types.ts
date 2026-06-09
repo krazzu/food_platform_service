@@ -24,6 +24,12 @@ export interface Supplier {
   source_url: string | null;
   source_platform: string | null;
   notes: string | null;
+  inn: string | null;
+  legal_name: string | null;
+  verified: boolean;
+  rating: number | null;
+  payment_terms: string | null;
+  works_with_nds: boolean | null;
   is_stale: boolean;
 }
 
