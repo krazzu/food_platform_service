@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from ..models.supplier import Supplier, Category
 from ..schemas.supplier import SupplierSearchResult, SupplierOut
 from . import vector_service
+from .query_expansion import expand
 
 
 async def structured_search(
@@ -22,10 +23,13 @@ async def structured_search(
     q = select(Supplier).options(selectinload(Supplier.category))
 
     if query:
+        # Search name, description, city and region — so "Москва" in query finds Moscow suppliers
         like = f"%{query}%"
         q = q.where(or_(
             Supplier.name.ilike(like),
             Supplier.description.ilike(like),
+            Supplier.city.ilike(like),
+            Supplier.region.ilike(like),
         ))
 
     if category:
@@ -64,15 +68,19 @@ async def merged_search(
     Semantic scores are used as the primary ranking signal;
     structured matches that didn't appear semantically are appended.
     """
-    # 1. Semantic search — returns (id, score) sorted by score desc
+    # 1. Semantic search with query expansion for better recall
+    #    e.g. "рыба" → "рыба морепродукты лосось треска ..."
     semantic_hits: dict[int, float] = {}
-    try:
-        for supplier_id, score in vector_service.semantic_search(query, limit=limit * 2):
-            semantic_hits[supplier_id] = score
-    except Exception:
-        pass  # Qdrant might be empty on first boot; fall back to structured only
+    if query:
+        expanded_query = expand(query)
+        try:
+            for supplier_id, score in vector_service.semantic_search(expanded_query, limit=limit * 2):
+                semantic_hits[supplier_id] = score
+        except Exception:
+            pass  # Qdrant might be empty on first boot; fall back to structured only
 
     # 2. Structured search — always run to apply hard filters
+    #    Pass raw query (not expanded) for exact text matching; city/region included
     structured_hits = await structured_search(
         db,
         query=query if not semantic_hits else "",
