@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, func
 
-from .database import engine, AsyncSessionLocal, Base
+from .database import AsyncSessionLocal
 from .models.supplier import Supplier  # noqa: F401 — registers SQLAlchemy metadata
 from scrapers.seed_data import load_seed_data
 from .api import search, suppliers, admin
@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     async with AsyncSessionLocal() as db:
         count = await db.scalar(select(func.count()).select_from(Supplier))
         if not count:

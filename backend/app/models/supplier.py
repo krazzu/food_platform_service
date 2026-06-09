@@ -61,6 +61,14 @@ class Supplier(Base):
     # Notes
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
+    # B2B extra fields
+    inn: Mapped[Optional[str]] = mapped_column(String(12))               # ИНН
+    legal_name: Mapped[Optional[str]] = mapped_column(String(512))       # Официальное название юрлица
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)       # Вручную проверен
+    rating: Mapped[Optional[float]] = mapped_column(Float)               # Рейтинг 1.0–5.0
+    payment_terms: Mapped[Optional[str]] = mapped_column(String(256))    # Условия оплаты
+    works_with_nds: Mapped[Optional[bool]] = mapped_column(Boolean)      # Работает с НДС
+
     # Freshness tracking
     scraped_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     is_stale: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -76,6 +84,12 @@ class Supplier(Base):
 
 
 # Indexes for common filter patterns
-Index("ix_suppliers_region", Supplier.region)
-Index("ix_suppliers_category_id", Supplier.category_id)
-Index("ix_suppliers_is_stale", Supplier.is_stale)
+Index("ix_suppliers_region",          Supplier.region)
+Index("ix_suppliers_category_id",     Supplier.category_id)
+Index("ix_suppliers_is_stale",        Supplier.is_stale)
+Index("ix_suppliers_city",            Supplier.city)
+Index("ix_suppliers_min_order",       Supplier.min_order_amount)
+Index("ix_suppliers_has_certs",       Supplier.has_certificates)
+Index("ix_suppliers_verified",        Supplier.verified)
+Index("ix_suppliers_inn",             Supplier.inn)
+Index("ix_suppliers_region_category", Supplier.region, Supplier.category_id)

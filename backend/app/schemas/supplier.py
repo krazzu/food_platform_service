@@ -33,6 +33,14 @@ class SupplierOut(BaseModel):
     source_url: Optional[str] = None
     source_platform: Optional[str] = None
     notes: Optional[str] = None
+    # B2B extra fields
+    inn: Optional[str] = None
+    legal_name: Optional[str] = None
+    verified: bool = False
+    rating: Optional[float] = None
+    payment_terms: Optional[str] = None
+    works_with_nds: Optional[bool] = None
+    # Freshness
     is_stale: bool = False
     scraped_at: Optional[datetime] = None
     created_at: datetime
@@ -49,7 +57,6 @@ class SupplierIn(BaseModel):
     city: Optional[str] = None
     region: Optional[str] = None
     delivery_regions: Optional[list[str]] = None
-    # Pass category name as string; server resolves / creates the Category row
     category_name: Optional[str] = None
     min_order_amount: Optional[float] = None
     min_order_unit: Optional[str] = None
@@ -60,6 +67,13 @@ class SupplierIn(BaseModel):
     source_url: Optional[str] = None
     source_platform: Optional[str] = None
     notes: Optional[str] = None
+    # B2B extra fields
+    inn: Optional[str] = None
+    legal_name: Optional[str] = None
+    verified: bool = False
+    rating: Optional[float] = None
+    payment_terms: Optional[str] = None
+    works_with_nds: Optional[bool] = None
 
 
 class BulkUpsertRequest(BaseModel):

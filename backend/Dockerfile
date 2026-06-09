@@ -19,6 +19,6 @@ RUN playwright install chromium --with-deps
 
 COPY . .
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chmod +x /app/start.sh
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/start.sh"]
