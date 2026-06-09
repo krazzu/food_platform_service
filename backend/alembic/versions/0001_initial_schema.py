@@ -7,7 +7,6 @@ Create Date: 2025-01-01 00:00:00.000000
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0001"
@@ -17,87 +16,84 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "categories",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("name", sa.String(128), nullable=False),
-        sa.Column("parent_id", sa.Integer(), nullable=True),
-        sa.Column("slug", sa.String(128), nullable=False),
-        sa.ForeignKeyConstraint(["parent_id"], ["categories.id"]),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
-        sa.UniqueConstraint("slug"),
-    )
+    # IF NOT EXISTS so this migration is safe on DBs created by create_all
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS categories (
+            id SERIAL NOT NULL,
+            name VARCHAR(128) NOT NULL,
+            parent_id INTEGER,
+            slug VARCHAR(128) NOT NULL,
+            CONSTRAINT categories_pkey PRIMARY KEY (id),
+            CONSTRAINT categories_name_key UNIQUE (name),
+            CONSTRAINT categories_slug_key UNIQUE (slug),
+            CONSTRAINT categories_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES categories(id)
+        )
+    """)
 
-    op.create_table(
-        "suppliers",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("name", sa.String(256), nullable=False),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("website", sa.String(512), nullable=True),
-        sa.Column("email", sa.String(256), nullable=True),
-        sa.Column("phone", sa.String(64), nullable=True),
-        sa.Column("city", sa.String(128), nullable=True),
-        sa.Column("region", sa.String(128), nullable=True),
-        sa.Column("delivery_regions", sa.JSON(), nullable=True),
-        sa.Column("category_id", sa.Integer(), nullable=True),
-        sa.Column("min_order_amount", sa.Float(), nullable=True),
-        sa.Column("min_order_unit", sa.String(32), nullable=True),
-        sa.Column("price_range_description", sa.String(256), nullable=True),
-        sa.Column("has_certificates", sa.Boolean(), nullable=False),
-        sa.Column("certificate_types", sa.JSON(), nullable=True),
-        sa.Column("delivery_conditions", sa.Text(), nullable=True),
-        sa.Column("source_url", sa.String(1024), nullable=True),
-        sa.Column("source_platform", sa.String(64), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
-        # B2B fields
-        sa.Column("inn", sa.String(12), nullable=True),
-        sa.Column("legal_name", sa.String(512), nullable=True),
-        sa.Column("verified", sa.Boolean(), nullable=False),
-        sa.Column("rating", sa.Float(), nullable=True),
-        sa.Column("payment_terms", sa.String(256), nullable=True),
-        sa.Column("works_with_nds", sa.Boolean(), nullable=True),
-        # Freshness
-        sa.Column("scraped_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("is_stale", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["category_id"], ["categories.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id SERIAL NOT NULL,
+            name VARCHAR(256) NOT NULL,
+            description TEXT,
+            website VARCHAR(512),
+            email VARCHAR(256),
+            phone VARCHAR(64),
+            city VARCHAR(128),
+            region VARCHAR(128),
+            delivery_regions JSON,
+            category_id INTEGER,
+            min_order_amount FLOAT,
+            min_order_unit VARCHAR(32),
+            price_range_description VARCHAR(256),
+            has_certificates BOOLEAN NOT NULL DEFAULT FALSE,
+            certificate_types JSON,
+            delivery_conditions TEXT,
+            source_url VARCHAR(1024),
+            source_platform VARCHAR(64),
+            notes TEXT,
+            inn VARCHAR(12),
+            legal_name VARCHAR(512),
+            verified BOOLEAN NOT NULL DEFAULT FALSE,
+            rating FLOAT,
+            payment_terms VARCHAR(256),
+            works_with_nds BOOLEAN,
+            scraped_at TIMESTAMPTZ,
+            is_stale BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT suppliers_pkey PRIMARY KEY (id),
+            CONSTRAINT suppliers_category_id_fkey FOREIGN KEY (category_id) REFERENCES categories(id)
+        )
+    """)
 
-    # Indexes
-    op.create_index("ix_suppliers_region",          "suppliers", ["region"])
-    op.create_index("ix_suppliers_category_id",     "suppliers", ["category_id"])
-    op.create_index("ix_suppliers_is_stale",        "suppliers", ["is_stale"])
-    op.create_index("ix_suppliers_city",            "suppliers", ["city"])
-    op.create_index("ix_suppliers_min_order",       "suppliers", ["min_order_amount"])
-    op.create_index("ix_suppliers_has_certs",       "suppliers", ["has_certificates"])
-    op.create_index("ix_suppliers_verified",        "suppliers", ["verified"])
-    op.create_index("ix_suppliers_inn",             "suppliers", ["inn"])
-    op.create_index(
-        "ix_suppliers_region_category",
-        "suppliers",
-        ["region", "category_id"],
-    )
-
-    # GIN index for Russian full-text search
+    _idx = "CREATE INDEX IF NOT EXISTS"
+    op.execute(f"{_idx} ix_suppliers_region ON suppliers (region)")
+    op.execute(f"{_idx} ix_suppliers_category_id ON suppliers (category_id)")
+    op.execute(f"{_idx} ix_suppliers_is_stale ON suppliers (is_stale)")
+    op.execute(f"{_idx} ix_suppliers_city ON suppliers (city)")
+    op.execute(f"{_idx} ix_suppliers_min_order ON suppliers (min_order_amount)")
+    op.execute(f"{_idx} ix_suppliers_has_certs ON suppliers (has_certificates)")
+    op.execute(f"{_idx} ix_suppliers_verified ON suppliers (verified)")
+    op.execute(f"{_idx} ix_suppliers_inn ON suppliers (inn)")
     op.execute(
-        "CREATE INDEX ix_suppliers_fts ON suppliers "
+        f"{_idx} ix_suppliers_region_category ON suppliers (region, category_id)"
+    )
+    op.execute(
+        f"{_idx} ix_suppliers_fts ON suppliers "
         "USING gin(to_tsvector('russian', name || ' ' || coalesce(description, '')))"
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_suppliers_fts", table_name="suppliers")
-    op.drop_index("ix_suppliers_region_category", table_name="suppliers")
-    op.drop_index("ix_suppliers_inn", table_name="suppliers")
-    op.drop_index("ix_suppliers_verified", table_name="suppliers")
-    op.drop_index("ix_suppliers_has_certs", table_name="suppliers")
-    op.drop_index("ix_suppliers_min_order", table_name="suppliers")
-    op.drop_index("ix_suppliers_city", table_name="suppliers")
-    op.drop_index("ix_suppliers_is_stale", table_name="suppliers")
-    op.drop_index("ix_suppliers_category_id", table_name="suppliers")
-    op.drop_index("ix_suppliers_region", table_name="suppliers")
-    op.drop_table("suppliers")
-    op.drop_table("categories")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_fts")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_region_category")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_inn")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_verified")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_has_certs")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_min_order")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_city")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_is_stale")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_category_id")
+    op.execute("DROP INDEX IF EXISTS ix_suppliers_region")
+    op.execute("DROP TABLE IF EXISTS suppliers")
+    op.execute("DROP TABLE IF EXISTS categories")
