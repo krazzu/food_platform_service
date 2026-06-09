@@ -66,6 +66,8 @@ def upgrade() -> None:
         )
     """)
 
+    # Indexes only on columns that exist in the ORIGINAL schema (before B2B fields).
+    # Indexes on inn/verified columns are in migration 0002, after those columns are added.
     _idx = "CREATE INDEX IF NOT EXISTS"
     op.execute(f"{_idx} ix_suppliers_region ON suppliers (region)")
     op.execute(f"{_idx} ix_suppliers_category_id ON suppliers (category_id)")
@@ -73,8 +75,6 @@ def upgrade() -> None:
     op.execute(f"{_idx} ix_suppliers_city ON suppliers (city)")
     op.execute(f"{_idx} ix_suppliers_min_order ON suppliers (min_order_amount)")
     op.execute(f"{_idx} ix_suppliers_has_certs ON suppliers (has_certificates)")
-    op.execute(f"{_idx} ix_suppliers_verified ON suppliers (verified)")
-    op.execute(f"{_idx} ix_suppliers_inn ON suppliers (inn)")
     op.execute(
         f"{_idx} ix_suppliers_region_category ON suppliers (region, category_id)"
     )
